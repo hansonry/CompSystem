@@ -198,15 +198,15 @@ void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
       actorIndexLast = sys->actorInfo.eleCount - 1;
       actorPtrLast = &sys->actorArray[actorIndexLast];
       
+      free(actorPtr->compIndexArray);
       if(actorPtr != actorPtrLast)
       {
          actorPtr->id = actorPtrLast->id;
-         free(actorPtr->compIndexArray);
          actorPtr->compIndexArray = actorPtrLast->compIndexArray;
-         actorPtrLast->compIndexArray = NULL;
-      
+         
          CompSystem_UpdateActorPointers(sys, actorPtr);
       }
+      actorPtrLast->compIndexArray = NULL;
       
       // Decrement Size
       sys->actorInfo.eleCount --;
