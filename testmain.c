@@ -71,14 +71,14 @@ static void loop(CompSystem_T sys, comptypeid_t * types)
    }
    
    
-   CompSystem_ComponentFor(sys, types[eComp_Position], &data, &count);
+   CompSystem_ComponentFor(sys, types[eComp_Position], (void**)&data, &count);
    
    for(i = 0; i < count; i++)
    {
       printf("Position: (i, v) = (%i, %i)\n", i, data[i]);
    }
    
-   CompSystem_ComponentFor(sys, types[eComp_Physics], &data, &count);
+   CompSystem_ComponentFor(sys, types[eComp_Physics], (void**)&data, &count);
    
    for(i = 0; i < count; i++)
    {
@@ -94,10 +94,10 @@ static void jumptest(CompSystem_T sys, comptypeid_t * types, actorid_t actor)
    actorid_t outActor;
    
       
-   CompSystem_GetComponent(sys, actor, types[eComp_Position], &index, &ptr);
+   CompSystem_GetComponent(sys, actor, types[eComp_Position], &index, (void**)&ptr);
    printf("GetComponent: (a, i, v) = (%i, %i, %i)\n", actor, index, *ptr);
    CompSystem_GetComponentActor(sys, types[eComp_Position], index, &outActor);
    printf("GetComponentActor: (oa) = (%i)\n", outActor);
-   CompSystem_GetComponentFromComponent(sys, types[eComp_Position], index, types[eComp_Physics], &index2, &ptr2);
+   CompSystem_GetComponentFromComponent(sys, types[eComp_Position], index, types[eComp_Physics], &index2, (void**)&ptr2);
    printf("GetComponentFromComponent: (i2, v2) = (%i, %i)\n", index2, *ptr2);
 }
