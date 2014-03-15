@@ -41,8 +41,10 @@ struct compsystem_s
 
 static int CompSystem_SetArraySize(void ** array, int elementSize, int size, int newSize);
 static int CompSystem_GrowArraySize(void ** array, int elementSize, int size, int delta);
-static Actor_T * CompSystem_FindActorFromID(CompSystem_T sys, actorid_t actor);
-static void CompSystem_UpdateActorPointers(CompSystem_T sys);
+static int CompSystem_FindActorFromID(CompSystem_T sys, actorid_t actor);
+static void CompSystem_UpdateAllActorPointers(CompSystem_T sys);
+static void CompSystem_UpdateActorPointers(CompSystem_T sys, Actor_T * actorPtr);
+static void CompSystem_MoveMemory(void * dest, void * src, int elementSize);
 
 
 CompSystem_T CompSystem_Create(void)
@@ -97,7 +99,7 @@ void CompSystem_NewType(CompSystem_T sys, comptypeid_t * type)
                               oldSize,
                               sys->typeInfo.eleCount);
       // Clear New Value
-      actorPtr->compIndexArray[(*type)] = -1;
+      actorPtr->compIndexArray[(*type)] = COMPSYSTEM_INVALID_INDEX;
       
    }
 }
@@ -134,7 +136,7 @@ void CompSystem_NewActor(CompSystem_T sys, actorid_t * actor)
                                                          sys->actorInfo.arySize,
                                                          GROW_BY);
                                                          
-      CompSystem_UpdateActorPointers(sys);
+      CompSystem_UpdateAllActorPointers(sys);
    }
    (*actor) = sys->actorInfo.eleCount;
    sys->actorInfo.eleCount ++;
@@ -146,8 +148,71 @@ void CompSystem_NewActor(CompSystem_T sys, actorid_t * actor)
    actorPtr->compIndexArray = calloc(sys->typeInfo.eleCount, sizeof(int));
    for(i = 0; i < sys->typeInfo.eleCount; i ++)
    {
-      actorPtr->compIndexArray[i] = -1;
+      actorPtr->compIndexArray[i] = COMPSYSTEM_INVALID_INDEX;
    }   
+}
+
+void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
+{
+   int actorIndex, compType, compIndex, compIndexLast, actorIndexLast;
+   int compByteIndex, compByteIndexLast;
+   Actor_T * actorPtr, * actorPtrLast;
+   CompType_T * compTypePtr;
+   
+   actorIndex = CompSystem_FindActorFromID(sys, actor);
+   if(actorIndex != COMPSYSTEM_INVALID_INDEX)
+   {
+      actorPtr = &sys->actorArray[actorIndex];
+      // Overwrite each component and re-attach back to orignal Actor
+      for(compType = 0; compType < sys->typeInfo.eleCount; compType++)
+      {         
+         compIndex = actorPtr->compIndexArray[compType];
+         if(compIndex != COMPSYSTEM_INVALID_INDEX)
+         {
+            compTypePtr = &sys->typeArray[compType];
+            compIndexLast = compTypePtr->compInfo.eleCount - 1;
+            actorPtrLast = compTypePtr->actorPtrArray[compIndexLast];         
+            compByteIndex =     compIndex     * compTypePtr->elementSize;
+            compByteIndexLast = compIndexLast * compTypePtr->elementSize;
+
+            
+            // TODO: Destroy(compTypePtr->compArray[compIndex])
+            
+            // Move Last Element into this one
+            CompSystem_MoveMemory(&compTypePtr->compArray[compByteIndex], 
+                                  &compTypePtr->compArray[compByteIndexLast],
+                                  compTypePtr->elementSize);
+                                  
+            // Re-attach Actor to component
+            
+            compTypePtr->actorPtrArray[compIndex] = actorPtrLast;
+            actorPtrLast->compIndexArray[compType] = compIndex;
+            
+            // Decrement Size
+            compTypePtr->compInfo.eleCount --;
+         }
+                              
+      }
+      
+      // Overwrite the Actor
+      actorIndexLast = sys->actorInfo.eleCount - 1;
+      actorPtrLast = &sys->actorArray[actorIndexLast];
+      
+      if(actorPtr != actorPtrLast)
+      {
+         actorPtr->id = actorPtrLast->id;
+         free(actorPtr->compIndexArray);
+         actorPtr->compIndexArray = actorPtrLast->compIndexArray;
+         actorPtrLast->compIndexArray = NULL;
+      
+         CompSystem_UpdateActorPointers(sys, actorPtr);
+      }
+      
+      // Decrement Size
+      sys->actorInfo.eleCount --;
+      
+      
+   }
 }
 
 void CompSystem_SetComponent(CompSystem_T sys, actorid_t actor, comptypeid_t type, const void * comp)
@@ -157,12 +222,14 @@ void CompSystem_SetComponent(CompSystem_T sys, actorid_t actor, comptypeid_t typ
    byte_t * dest;
    int destOffset;
    int destIndex;
+   int actorIndex;
    
    compTypePtr = &sys->typeArray[type];
-   actorPtr = CompSystem_FindActorFromID(sys, actor);
-   if(actorPtr != NULL && compTypePtr != NULL)
+   actorIndex = CompSystem_FindActorFromID(sys, actor);
+   if(actorIndex != COMPSYSTEM_INVALID_INDEX && compTypePtr != NULL)
    {
-      if(actorPtr->compIndexArray[type] == -1)
+      actorPtr = &sys->actorArray[actorIndex];
+      if(actorPtr->compIndexArray[type] == COMPSYSTEM_INVALID_INDEX)
       {
          // Grow if necessary
          if(compTypePtr->compInfo.eleCount >= compTypePtr->compInfo.arySize)
@@ -213,13 +280,14 @@ void CompSystem_GetComponent(const CompSystem_T sys, actorid_t actor, comptypeid
    Actor_T * actorPtr;
    CompType_T * compTypePtr;
    byte_t * outPtr;
-   int outInd, offset;
+   int outInd, offset, actorIndex;   
    
    
    compTypePtr = &sys->typeArray[type];
-   actorPtr = CompSystem_FindActorFromID(sys, actor);
-   if(actorPtr != NULL)
+   actorIndex = CompSystem_FindActorFromID(sys, actor);
+   if(actorIndex != COMPSYSTEM_INVALID_INDEX)
    {
+      actorPtr = &sys->actorArray[actorIndex];
       outInd = actorPtr->compIndexArray[type];
       offset = outInd * compTypePtr->elementSize;
       outPtr = &compTypePtr->compArray[offset];
@@ -227,7 +295,7 @@ void CompSystem_GetComponent(const CompSystem_T sys, actorid_t actor, comptypeid
    else
    {
       outPtr = NULL;
-      outInd = -1;
+      outInd = COMPSYSTEM_INVALID_INDEX;
    }
    
    if(outPointer != NULL)
@@ -324,6 +392,7 @@ void CompSystem_Destroy(CompSystem_T sys)
    for(i = 0; i < sys->typeInfo.eleCount; i++)
    {
       compTypePtr = &sys->typeArray[i];
+      // TODO: Loop and Destroy(compTypePtr->compArray[compIndex])
       if(compTypePtr->compArray != NULL)
       {
          free(compTypePtr->compArray);
@@ -355,41 +424,56 @@ static int CompSystem_SetArraySize(void ** array, int elementSize, int size, int
 }
 
 
-static Actor_T * CompSystem_FindActorFromID(CompSystem_T sys, actorid_t actor)
-{
-   Actor_T * actorPtr;
-   int i;
+static int CompSystem_FindActorFromID(CompSystem_T sys, actorid_t actor)
+{   
+   int i, outIndex;
    
-   actorPtr = NULL;
+   outIndex = COMPSYSTEM_INVALID_INDEX;
    
    for(i = 0; i < sys->actorInfo.eleCount; i++)
    {
       if(sys->actorArray[i].id == actor)
       {
-         actorPtr = &sys->actorArray[i];
+         outIndex = i;
          break;
       }
    }
-   return actorPtr;
+   return outIndex;
 }
 
-static void CompSystem_UpdateActorPointers(CompSystem_T sys)
+static void CompSystem_UpdateAllActorPointers(CompSystem_T sys)
 {
-   int typeIndex, actorIndex, dataIndex;
-   CompType_T * compTypePtr;
+   int actorIndex;
    Actor_T * actorPtr;
    
    for(actorIndex = 0; actorIndex < sys->actorInfo.eleCount; actorIndex++)
    {
       actorPtr = &sys->actorArray[actorIndex];
-      for(typeIndex = 0; typeIndex < sys->typeInfo.eleCount; typeIndex++)
-      {
-         compTypePtr = &sys->typeArray[typeIndex];
-         dataIndex = actorPtr->compIndexArray[typeIndex];
-         if(dataIndex != -1)
-         {
-            compTypePtr->actorPtrArray[dataIndex] = actorPtr;
-         }
-      }
+      CompSystem_UpdateActorPointers(sys, actorPtr);
    }
 }
+
+static void CompSystem_UpdateActorPointers(CompSystem_T sys, Actor_T * actorPtr)
+{
+   int typeIndex, dataIndex;
+   CompType_T * compTypePtr;
+   for(typeIndex = 0; typeIndex < sys->typeInfo.eleCount; typeIndex++)
+   {
+      dataIndex = actorPtr->compIndexArray[typeIndex];
+      if(dataIndex != COMPSYSTEM_INVALID_INDEX)
+      {
+         compTypePtr = &sys->typeArray[typeIndex];
+         compTypePtr->actorPtrArray[dataIndex] = actorPtr;
+      }
+   }
+
+}
+
+static void CompSystem_MoveMemory(void * dest, void * src, int elementSize)
+{
+   if(dest != src)
+   {
+      memcpy(dest, src, elementSize);
+   }   
+}
+

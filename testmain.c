@@ -27,6 +27,15 @@ int main(int argc, char * args[])
    
    loop(sys, types);
    
+   // Remove First Element
+   CompSystem_RemoveActor(sys, 0);
+   jumptest(sys, types, 19);
+   loop(sys, types);
+   
+   // Remove Second Element
+   CompSystem_RemoveActor(sys, 18);
+   jumptest(sys, types, 17);
+   loop(sys, types);
    
    CompSystem_Destroy(sys);
    printf("HelloWorld\n");
