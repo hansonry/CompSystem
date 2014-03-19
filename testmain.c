@@ -13,6 +13,7 @@ static void createTypes(CompSystem_T sys, comptypeid_t * types);
 static void addActors(CompSystem_T sys, comptypeid_t * types);
 static void loop(CompSystem_T sys, comptypeid_t * types);
 static void jumptest(CompSystem_T sys, comptypeid_t * types, actorid_t actor);
+static void destroy(int * comp, CompSystem_T sys, comptypeid_t type, actorid_t actor);
 
 int main(int argc, char * args[])
 {
@@ -48,7 +49,7 @@ static void createTypes(CompSystem_T sys, comptypeid_t * types)
    for(i = 0; i < eComp_Last; i ++)
    {
       CompSystem_NewType(sys, &types[i]);
-      CompSystem_SetType(sys, types[i], sizeof(int));
+      CompSystem_SetType(sys, types[i], sizeof(int), (CompSystem_DestroyFunc_T)&destroy);
    }
 }
 
@@ -110,3 +111,9 @@ static void jumptest(CompSystem_T sys, comptypeid_t * types, actorid_t actor)
    CompSystem_GetComponentFromComponent(sys, types[eComp_Position], index, types[eComp_Physics], &index2, (void**)&ptr2);
    printf("GetComponentFromComponent: (i2, v2) = (%i, %i)\n", index2, *ptr2);
 }
+
+static void destroy(int * comp, CompSystem_T sys, comptypeid_t type, actorid_t actor)
+{
+   printf("Destroy: (a, t, v) = (%i, %i, %i)\n", actor, type, *comp);
+}
+

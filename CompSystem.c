@@ -27,6 +27,7 @@ typedef struct comptype_s
    Actor_T ** actorPtrArray;
    ArrayInfo_T compInfo;
    int elementSize;
+   CompSystem_DestroyFunc_T destroyFunc;
    
 } CompType_T;
 
@@ -45,6 +46,10 @@ static int CompSystem_FindActorFromID(CompSystem_T sys, actorid_t actor);
 static void CompSystem_UpdateAllActorPointers(CompSystem_T sys);
 static void CompSystem_UpdateActorPointers(CompSystem_T sys, Actor_T * actorPtr);
 static void CompSystem_MoveMemory(void * dest, void * src, int elementSize);
+static void CompSystem_DestroyComponent(CompSystem_T sys, comptypeid_t type, 
+                                        actorid_t actor, 
+                                        CompSystem_DestroyFunc_T destroyFunc, 
+                                        void * comp);
 
 
 CompSystem_T CompSystem_Create(void)
@@ -104,7 +109,7 @@ void CompSystem_NewType(CompSystem_T sys, comptypeid_t * type)
    }
 }
 
-void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize)
+void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize, CompSystem_DestroyFunc_T destroyFunc)
 {
    CompType_T * compTypePtr;
    compTypePtr = &sys->typeArray[type];
@@ -118,6 +123,7 @@ void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize)
    
    // Create new buffers
    compTypePtr->elementSize       = elementSize;
+   compTypePtr->destroyFunc       = destroyFunc;
    compTypePtr->compInfo.arySize  = GROW_BY;
    compTypePtr->compInfo.eleCount = 0;
    compTypePtr->compArray         = calloc(GROW_BY, elementSize);
@@ -176,7 +182,10 @@ void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
             compByteIndexLast = compIndexLast * compTypePtr->elementSize;
 
             
-            // TODO: Destroy(compTypePtr->compArray[compIndex])
+            CompSystem_DestroyComponent(sys, compType, actor,
+                                        compTypePtr->destroyFunc,
+                                        &compTypePtr->compArray[compByteIndex]);
+                                        
             
             // Move Last Element into this one
             CompSystem_MoveMemory(&compTypePtr->compArray[compByteIndex], 
@@ -377,9 +386,35 @@ void CompSystem_GetActor(const CompSystem_T sys, int index, actorid_t * actor)
 
 void CompSystem_Destroy(CompSystem_T sys)
 {
-   int i;
+   int i, j;
    CompType_T * compTypePtr;
    Actor_T * actorPtr;
+   byte_t * comp;
+   
+   
+   // Clean Components
+   for(i = 0; i < sys->typeInfo.eleCount; i++)
+   {
+      compTypePtr = &sys->typeArray[i];
+      
+      if(compTypePtr->compArray != NULL)
+      {
+         comp = compTypePtr->compArray;
+         for(j = 0; j < compTypePtr->compInfo.eleCount; j++)
+         {
+            CompSystem_DestroyComponent(sys, i,
+                                        compTypePtr->actorPtrArray[j]->id,
+                                        compTypePtr->destroyFunc,
+                                        comp);
+            comp += compTypePtr->elementSize;
+                                           
+         }
+
+      
+         free(compTypePtr->compArray);
+         free(compTypePtr->actorPtrArray);
+      }
+   }
    
    // Clean Actors
    for(i = 0; i < sys->actorInfo.eleCount; i++)
@@ -387,18 +422,7 @@ void CompSystem_Destroy(CompSystem_T sys)
       actorPtr = &sys->actorArray[i];
       free(actorPtr->compIndexArray);
    }
-   
-   // Clean Components
-   for(i = 0; i < sys->typeInfo.eleCount; i++)
-   {
-      compTypePtr = &sys->typeArray[i];
-      // TODO: Loop and Destroy(compTypePtr->compArray[compIndex])
-      if(compTypePtr->compArray != NULL)
-      {
-         free(compTypePtr->compArray);
-         free(compTypePtr->actorPtrArray);
-      }
-   }
+
    
    free(sys->typeArray);
    free(sys->actorArray);
@@ -475,5 +499,16 @@ static void CompSystem_MoveMemory(void * dest, void * src, int elementSize)
    {
       memcpy(dest, src, elementSize);
    }   
+}
+
+static void CompSystem_DestroyComponent(CompSystem_T sys, comptypeid_t type, 
+                                        actorid_t actor, 
+                                        CompSystem_DestroyFunc_T destroyFunc, 
+                                        void * comp)
+{
+   if(destroyFunc != NULL)
+   {
+      destroyFunc(comp, sys, type, actor);
+   }
 }
 

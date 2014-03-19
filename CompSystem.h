@@ -3,16 +3,20 @@
 
 #define COMPSYSTEM_INVALID_INDEX -1
 
+typedef struct compsystem_s * CompSystem_T;
+
 typedef unsigned int actorid_t;
 typedef unsigned int comptypeid_t;
+typedef void (*CompSystem_DestroyFunc_T)(void * comp, CompSystem_T sys, 
+                                         comptypeid_t type, actorid_t actor);
 
 
-typedef struct compsystem_s * CompSystem_T;
+
 
 CompSystem_T CompSystem_Create(void);
 
 void CompSystem_NewType(CompSystem_T sys, comptypeid_t * type);
-void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize);
+void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize, CompSystem_DestroyFunc_T destroyFunc);
 
 void CompSystem_NewActor(CompSystem_T sys, actorid_t * actor);
 void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor);
