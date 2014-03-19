@@ -38,3 +38,4 @@ void CompSystem_GetActor(const CompSystem_T sys, int index, actorid_t * actor);
 void CompSystem_Destroy(CompSystem_T sys);
 
 #endif // __COMPSYSTEM_H__
+
