@@ -10,7 +10,7 @@ typedef enum comp_e
 } Comp_T;
 
 static void createTypes(CompSystem_T sys, comptypeid_t * types);
-static void addActors(CompSystem_T sys, comptypeid_t * types);
+static void addActors(CompSystem_T sys, comptypeid_t * types, int start, int count);
 static void loop(CompSystem_T sys, comptypeid_t * types);
 static void jumptest(CompSystem_T sys, comptypeid_t * types, actorid_t actor);
 static void destroy(int * comp, CompSystem_T sys, comptypeid_t type, actorid_t actor);
@@ -23,7 +23,7 @@ int main(int argc, char * args[])
    sys = CompSystem_Create();
 
    createTypes(sys, types);   
-   addActors(sys, types);
+   addActors(sys, types, 0, 20);
    jumptest(sys, types, 3);
    
    loop(sys, types);
@@ -36,6 +36,10 @@ int main(int argc, char * args[])
    // Remove Second Element
    CompSystem_RemoveActor(sys, 18);
    jumptest(sys, types, 17);
+   loop(sys, types);
+   
+   addActors(sys, types, 40, 2);
+   jumptest(sys, types, 1);
    loop(sys, types);
    
    CompSystem_Destroy(sys);
@@ -53,16 +57,16 @@ static void createTypes(CompSystem_T sys, comptypeid_t * types)
    }
 }
 
-static void addActors(CompSystem_T sys, comptypeid_t * types)
+static void addActors(CompSystem_T sys, comptypeid_t * types, int start, int count)
 {
    actorid_t actor1;
    int rawValue, *array, i;
-   for(i = 0; i < 20; i++)
+   for(i = 0; i < count; i++)
    {
       CompSystem_NewActor(sys, &actor1);
-      rawValue = i;
+      rawValue = start + i;
       CompSystem_SetComponent(sys, actor1, types[eComp_Position], &rawValue);
-      rawValue = i << 1;
+      rawValue = (start + i) << 1;
       CompSystem_SetComponent(sys, actor1, types[eComp_Physics], &rawValue);
    }
 }

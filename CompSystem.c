@@ -134,7 +134,7 @@ void CompSystem_SetType(CompSystem_T sys, comptypeid_t type, int elementSize, Co
 void CompSystem_NewActor(CompSystem_T sys, actorid_t * actor)
 {
    Actor_T * actorPtr;
-   int i;
+   int actorIndex, i;
    if(sys->actorInfo.eleCount >= sys->actorInfo.arySize)
    {
       sys->actorInfo.arySize = CompSystem_GrowArraySize((void**)&sys->actorArray,
@@ -144,18 +144,19 @@ void CompSystem_NewActor(CompSystem_T sys, actorid_t * actor)
                                                          
       CompSystem_UpdateAllActorPointers(sys);
    }
-   (*actor) = sys->actorInfo.eleCount;
+   actorIndex = sys->actorInfo.eleCount;
    sys->actorInfo.eleCount ++;
    
    // Init Actor
-   actorPtr = &sys->actorArray[(*actor)];
+   actorPtr = &sys->actorArray[actorIndex];
    actorPtr->id = sys->nextActorID;
    sys->nextActorID ++;
    actorPtr->compIndexArray = calloc(sys->typeInfo.eleCount, sizeof(int));
    for(i = 0; i < sys->typeInfo.eleCount; i ++)
    {
       actorPtr->compIndexArray[i] = COMPSYSTEM_INVALID_INDEX;
-   }   
+   }
+   (*actor) = actorPtr->id;
 }
 
 void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
@@ -200,7 +201,6 @@ void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
             // Decrement Size
             compTypePtr->compInfo.eleCount --;
          }
-                              
       }
       
       // Overwrite the Actor
