@@ -60,14 +60,15 @@ static void createTypes(CompSystem_T sys, comptypeid_t * types)
 static void addActors(CompSystem_T sys, comptypeid_t * types, int start, int count)
 {
    actorid_t actor1;
-   int rawValue, *array, i;
+   int *rawValue, *array, i;
    for(i = 0; i < count; i++)
    {
-      CompSystem_NewActor(sys, &actor1);
-      rawValue = start + i;
-      CompSystem_SetComponent(sys, actor1, types[eComp_Position], &rawValue);
-      rawValue = (start + i) << 1;
-      CompSystem_SetComponent(sys, actor1, types[eComp_Physics], &rawValue);
+      CompSystem_NewActor(sys, &actor1);      
+      CompSystem_SetComponent(sys, actor1, types[eComp_Position], (void**)&rawValue);
+      (*rawValue) = start + i;
+
+      CompSystem_SetComponent(sys, actor1, types[eComp_Physics], (void**)&rawValue);
+      (*rawValue) = (start + i) << 1;
    }
 }
 

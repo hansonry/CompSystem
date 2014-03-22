@@ -224,7 +224,7 @@ void CompSystem_RemoveActor(CompSystem_T sys, actorid_t actor)
    }
 }
 
-void CompSystem_SetComponent(CompSystem_T sys, actorid_t actor, comptypeid_t type, const void * comp)
+void CompSystem_SetComponent(CompSystem_T sys, actorid_t actor, comptypeid_t type, void ** compOut)
 {
    Actor_T * actorPtr;
    CompType_T * compTypePtr;
@@ -276,10 +276,13 @@ void CompSystem_SetComponent(CompSystem_T sys, actorid_t actor, comptypeid_t typ
       
       destOffset = destIndex * compTypePtr->elementSize;
       dest = &compTypePtr->compArray[destOffset];
-
-      memcpy(dest, comp, compTypePtr->elementSize);
+   }
+   else
+   {
+      dest = NULL;
    }
    
+   (*compOut) = dest;
    
    
 }
