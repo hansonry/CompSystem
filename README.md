@@ -5,6 +5,8 @@ A component based architecture library for game development in c
 
 Simple Usage Example
 ----------
+
+```
 actorid_t actor;
 comptypeid_t type;
 ComponentStruct_T *comp;
@@ -28,7 +30,7 @@ for(i = 0; i < size; i++)
 {
    printf("Member: %i\n", comp[i].member);
 }
-
+```
 
 Build
 ----------
